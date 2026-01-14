@@ -39,7 +39,7 @@ jobs:
 
   deploy:
     needs: [git-flow, docker-push]
-    if: github.ref_name == 'development' || github.ref_name == 'staging' || github.ref_name == 'main'
+    if: "!startsWith(github.ref_name, 'feature-')"
     uses: Ahmad-Faqehi/ci-templates/.github/workflows/deploy-ArgoCD.yaml@v2.8
     with:
       PROJECT_NAME: ${{ github.event.repository.name }}
