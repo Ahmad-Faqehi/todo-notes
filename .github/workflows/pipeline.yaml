@@ -1,0 +1,50 @@
+name: Build, Push and Deploy Docker Image
+
+on:
+  push:
+    branches:
+      - development
+      - feature-*
+      - main
+  pull_request:
+    types: [closed]
+    branches:
+      - staging
+      - main
+
+jobs:
+  git-flow:
+    uses: Ahmad-Faqehi/ci-templates/.github/workflows/git-flow.yaml@v2.8
+
+
+  docker-build:
+    needs: git-flow
+    uses: Ahmad-Faqehi/ci-templates/.github/workflows/docker-build.yaml@v2.8
+    with:
+      image_name: ${{ github.event.repository.name }}
+      image_tag: ${{ github.run_number }}
+    secrets:
+      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+
+
+  docker-push:
+    needs: docker-build
+    uses: Ahmad-Faqehi/ci-templates/.github/workflows/docker-push.yaml@v2.8
+    with:
+      image_name: ${{ github.event.repository.name }}
+      image_tag: ${{ github.run_number }}
+    secrets:
+      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+      DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+
+
+  deploy:
+    needs: [git-flow, docker-push]
+    uses: Ahmad-Faqehi/ci-templates/.github/workflows/deploy-ArgoCD.yaml@v2.8
+    with:
+      PROJECT_NAME: ${{ github.event.repository.name }}
+      PROJECT_ENV: ${{ needs.git-flow.outputs.ENV }}
+      PROJECT_NAMESPACE: ${{ needs.git-flow.outputs.ENV }}-${{ github.event.repository.name }}
+      IMAGE_TAG: ${{ github.run_number }}
+    secrets:
+      GITOPS_PAT: ${{ secrets.GITOPS_PAT }}
